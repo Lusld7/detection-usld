@@ -311,6 +311,16 @@ tr:last-child td{border-bottom:0}
 .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .facts{display:flex;flex-wrap:wrap;gap:6px 22px;color:var(--muted);font-size:14px}
 .facts b{color:var(--ink);font-variant-numeric:tabular-nums}
+.rp-ov{position:fixed;inset:0;z-index:60;background:#3A4252;display:flex;flex-direction:column}
+.rp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--navy);color:var(--navy-ink);border-bottom:3px solid var(--gold);padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.rp-st{font-size:13px;color:var(--navy-muted)}
+.rp-bar b{margin-right:auto;font-family:var(--display);font-weight:700;font-size:20px;text-transform:uppercase}
+.rp-bar .btn:not(.gold){background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:var(--navy-ink)}
+.rp-ov iframe{flex:1;width:100%;border:0;background:#E3E7ED}
+.radar-app{color:var(--muted)}
+.lg-app{display:flex;justify-content:center;gap:18px;font-size:13px;color:var(--muted);margin:4px 0 0;align-items:center}
+.lg-app i{display:inline-block;width:22px;border-top:3px solid var(--ink);margin-right:6px;vertical-align:middle}
+.lg-app i.d{border-top:2px dashed var(--gold)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion:no-preference){.drawer{animation:slide .22s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}}
 </style>
@@ -793,6 +803,7 @@ function drawerHTML(id){
   return `<div class="d-top"><span class="num" id="f-num"></span><button type="button" class="btn small" id="f-close" data-a="close">Fermer</button></div>
   <div class="hero" id="f-hero"></div>
   <div class="pillars" id="f-pillars"></div>
+  <div class="sec" id="f-prof"><h3>Profil <small>comparé à la moyenne des joueurs évalués</small></h3><div id="f-radar" class="radar-app"></div></div>
   <div class="sec"><h3>Statut <small id="f-here" class="here"></small></h3>
     <div class="seg" role="group" aria-label="Statut du joueur" id="f-statut">${STATUTS.map(([k,l])=>`<button type="button" class="st-${k}" data-a="statut" data-v="${k}" aria-pressed="false"${canW()?"":" disabled"}>${esc(l)}</button>`).join("")}</div></div>
   <div class="sec"><h3>Identité</h3>
@@ -839,6 +850,8 @@ function updateDrawer(){
   const meta=[cat(j.annee)?cat(j.annee)+" · né en "+(j.mois?MOIS[j.mois-1]+" ":"")+j.annee:"Année à préciser",j.club||"Sans club",j.poste,j.pied?"pied "+j.pied.toLowerCase():"",a.matu?"développement "+MATU_L[a.matu].toLowerCase():"",j.lieu||SRC[j.source]].filter(Boolean).join(" · ");
   $("#f-hero").innerHTML=`<span class="ini" aria-hidden="true">${esc(ini(j))}</span><div><h2 id="f-title">${esc(fullName(j))}${tBadge(j)}</h2><p>${esc(meta)}</p></div>${noteBlock(a)}`;
   $("#f-pillars").innerHTML=CRIT.map(c=>{const v=a.avg[c.id];return `<div class="pillar"><span title="${esc(c.name)}">${esc(c.name)}</span><b>${f1(v)}</b><div class="track"><i style="width:${v!=null?Math.round(v/5*100):0}%"></i></div></div>`}).join("");
+  {const others=Object.keys(AG).filter(k=>AG[k].note!=null).map(k=>({a:AG[k]}));const gp=avgProfile(others);
+   $("#f-radar").innerHTML=a.note!=null?radarSVG(CRIT.map(c=>a.avg[c.id]),gp,{size:200,stroke:"var(--ink)",fill:"var(--gold-soft)",cmp:"var(--gold)",grid:"var(--line)",text:"var(--muted)",aria:"Profil de "+fullName(j)})+`<p class="lg-app"><span><i></i>${esc(j.prenom||"Joueur")}</span><span><i class="d"></i>Moyenne des joueurs évalués</span></p>`:`<p class="hint">Le profil apparaît dès la première évaluation.</p>`}
   document.querySelectorAll("#f-statut button").forEach(b=>b.setAttribute("aria-pressed",String((j.statut||"suivre")===b.dataset.v)));
   const act=document.activeElement;
   document.querySelectorAll("#drawer [data-f]").forEach(el=>{
@@ -1044,7 +1057,7 @@ function renderReport(){
   const total=R.list.length||1;
   box.innerHTML=`<div class="rep-head"><div><h2>${R.team?"Bilan de l'équipe":"Rapport de détection"}</h2><p>${esc(R.label)} · état au ${esc(new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}))}</p></div>
     <div class="rep-tools">${go.length>1?`<label class="field"><span>Groupe</span><select id="r-group"><option value="">Tous les joueurs</option>${go.map(([k,l])=>`<option value="${esc(k)}"${k===R.g?" selected":""}>${esc(l)}</option>`).join("")}</select></label>`:""}
-    ${DL?`<button type="button" class="btn primary" data-a="exp-html" ${R.list.length?"":"disabled"}>Télécharger le rapport</button><button type="button" class="btn" data-a="exp-csv" ${R.list.length?"":"disabled"}>Exporter pour Excel</button>`:""}</div></div>
+    ${DL?`<button type="button" class="btn primary" data-a="rep-open" ${R.list.length?"":"disabled"}>Rapport PDF pour la direction technique</button><button type="button" class="btn" data-a="exp-csv" ${R.list.length?"":"disabled"}>Exporter pour Excel</button>`:""}</div></div>
   ${!R.list.length?`<div class="empty"><img src="${CREST}" alt=""><strong>Rien à présenter pour l'instant</strong><p>Le rapport se remplit tout seul à mesure que les éducateurs ajoutent et évaluent des joueurs.</p><a class="btn primary" href="#joueurs">Aller aux joueurs</a></div>`:`
   <div class="kpis">
     <div class="kpi"><span>Joueurs</span><b>${R.list.length}</b><small>${R.evald.length} évalué${R.evald.length>1?"s":""}</small></div>
@@ -1083,33 +1096,351 @@ function buildCSV(){
   });
   return "﻿"+[head].concat(rows).map(r=>r.map(csvCell).join(";")).join("\r\n");
 }
-async function buildReportHTML(){
-  const R=repData();
-  const ids=[];R.list.forEach(x=>(BYJ[x.id]||[]).forEach(e=>e.auteur&&ids.push(e.auteur)));
-  if(USER&&ids.length){try{const ps=await USER.profiles([...new Set(ids)]);Object.keys(ps).forEach(k=>{NAMES[k]={name:ps[k].name,avatar:ps[k].avatarUrl}})}catch(e){}}
-  const dateTxt=new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
-  const order=R.sel.concat(R.list.filter(x=>!SELECTION.has(x.j.statut)).sort((x,y)=>(y.a.note==null?-1:y.a.note)-(x.a.note==null?-1:x.a.note)));
-  const stCount=STATUTS.map(([k,l])=>`<td><b>${R.list.filter(x=>(x.j.statut||"suivre")===k).length}</b><br>${esc(l)}</td>`).join("");
-  const fiche=({id,j,a})=>{const ev=BYJ[id]||[];
-    return `<section class="f"><div class="fh"><div><h3>${esc(fullName(j))}</h3><p>${esc([cat(j.annee)?cat(j.annee)+" (né en "+(j.mois?MOIS[j.mois-1]+" ":"")+j.annee+(trim(j.mois)?", T"+trim(j.mois):"")+")":"",a.matu?"développement "+MATU_L[a.matu].toLowerCase():"",j.club||"Sans club",j.poste,j.pied?"pied "+j.pied.toLowerCase():"",j.lieu||SRC[j.source]].filter(Boolean).join(" · "))}</p></div><div class="nt">${a.note==null?"—":f1(a.note)}<small>/5</small></div></div>
-    <p class="st">${esc(ST[j.statut||"suivre"])} · ${esc(FI[a.fi])} · ${a.n} évaluation${a.n>1?"s":""}${a.n?` · ${a.avis.oui} fort potentiel, ${a.avis.revoir} à revoir, ${a.avis.non} pas au niveau`:""}</p>
-    ${a.n?`<table class="cr"><tr>${CRIT.map(c=>`<th>${esc(c.name)}</th>`).join("")}</tr><tr>${CRIT.map(c=>`<td>${f1(a.avg[c.id])}</td>`).join("")}</tr></table>`:""}
-    ${j.notes?`<p><b>Observations :</b> ${esc(j.notes)}</p>`:""}
-    ${ev.map(e=>`<div class="ev"><b>${esc(nameOf(e.auteur,e.sig))}</b> · ${esc(fmtDate(e.date))}${e.contexte?" · "+esc(e.contexte):""} · <i>${esc(AV[e.avis]||"")}</i> · ${CRIT.map(c=>c.k+" "+(e.notes&&e.notes[c.id]||"—")).join(" · ")}${MATU_L[e.matu]?" · développement "+esc(MATU_L[e.matu].toLowerCase()):""}${e.forts?`<br>Points forts : ${esc(e.forts)}`:""}${e.axes?`<br>Axes de progrès : ${esc(e.axes)}`:""}</div>`).join("")}</section>`};
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${R.team?"Bilan de l'équipe":"Rapport de détection"} USLD – ${esc(R.label)}</title>
-<style>body{font-family:Barlow,"Segoe UI",Arial,sans-serif;color:#1C2534;margin:0;background:#fff;font-size:14px;line-height:1.45}.w{max-width:900px;margin:0 auto;padding:28px 24px}
-header{display:flex;gap:16px;align-items:center;border-bottom:3px solid #C9A26B;padding-bottom:14px;margin-bottom:18px}header img{width:56px}header h1{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;font-size:30px;margin:0;text-transform:uppercase}header p{margin:2px 0 0;color:#5A6577}
-h2{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif;text-transform:uppercase;font-size:22px;margin:26px 0 8px;border-bottom:1px solid #D3D9E2;padding-bottom:4px}
-table{border-collapse:collapse;width:100%}th,td{border:1px solid #D3D9E2;padding:6px 8px;text-align:left;font-size:13px}th{background:#EEF0F3;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-.k td{text-align:center;font-size:13px}.k b{font-size:22px}.f{border:1px solid #D3D9E2;border-radius:8px;padding:12px 14px;margin:10px 0;page-break-inside:avoid}.fh{display:flex;justify-content:space-between;gap:12px}.f h3{margin:0;font-size:18px}.f p{margin:4px 0}.nt{font-family:"Barlow Condensed",Arial,sans-serif;font-size:30px;font-weight:700}.nt small{font-size:15px;color:#5A6577}
-.st{color:#8A6526;font-weight:700}.cr td{text-align:center;font-weight:700}.ev{border-top:1px dashed #D3D9E2;padding-top:6px;margin-top:6px;font-size:13px}footer{margin-top:24px;color:#5A6577;font-size:12px}@media print{.w{padding:0}}</style></head><body><div class="w">
-<header><img src="${CREST}" alt=""><div><h1>${R.team?"Bilan de l'équipe":"Rapport de détection"}</h1><p>USL Dunkerque · ${esc(R.label)} · ${esc(dateTxt)}</p></div></header>
-<h2>Synthèse</h2><table class="k"><tr><td><b>${R.list.length}</b><br>joueurs</td><td><b>${R.nEv}</b><br>évaluations</td><td><b>${R.authors.size}</b><br>observateurs</td>${stCount}</tr></table>
-${R.team?"":`<h2>Sélection proposée au club (${R.sel.length})</h2>`}${R.team?"":R.sel.length?`<table><tr><th>Joueur</th><th>Cat.</th><th>Poste</th><th>Club</th><th>Note /5</th><th>Statut</th></tr>${R.sel.map(({j,a})=>`<tr><td>${esc(fullName(j))}</td><td>${esc(cat(j.annee)||"—")}</td><td>${esc(j.poste||"—")}</td><td>${esc(j.club||"Sans club")}</td><td>${a.note==null?"—":f1(a.note)}</td><td>${esc(ST[j.statut])}</td></tr>`).join("")}</table>`:"<p>Aucun joueur en sélection pour l'instant.</p>"}
-<h2>Classement des joueurs évalués</h2>${R.evald.length?`<table><tr><th>Rang</th><th>Joueur</th><th>Cat.</th><th>Né</th><th>Poste</th>${CRIT.map(c=>`<th title="${esc(c.name)}">${c.k}</th>`).join("")}<th>Note</th><th>Fiabilité</th><th>Statut</th></tr>${R.evald.map(({j,a},i)=>`<tr><td>${i+1}</td><td>${esc(fullName(j))}</td><td>${esc(cat(j.annee)||"—")}</td><td>${trim(j.mois)?"T"+trim(j.mois):"—"}</td><td>${esc(j.poste||"—")}</td>${CRIT.map(c=>`<td>${f1(a.avg[c.id])}</td>`).join("")}<td><b>${f1(a.note)}</b></td><td>${esc(FI[a.fi])}</td><td>${esc(ST[j.statut||"suivre"])}</td></tr>`).join("")}</table><p style="color:#5A6577;font-size:12px">T technique · J compréhension du jeu · A qualités athlétiques · M attitude et mental · P potentiel (notes sur 5).</p>`:"<p>Aucun joueur évalué.</p>"}
-<h2>Fiches détaillées</h2>${order.map(fiche).join("")}
-<footer>Document interne USL Dunkerque · contient des informations sur des mineurs : ne pas diffuser en dehors du club.</footer></div></body></html>`;
+/* ---------- graphiques : radar (« araignée ») ---------- */
+const RC=["Technique","Jeu","Athlétique","Mental","Potentiel"];
+function avgProfile(list){return CRIT.map(c=>{const vs=list.map(x=>x.a&&x.a.avg[c.id]).filter(v=>v!=null);return vs.length?vs.reduce((s,v)=>s+v,0)/vs.length:null})}
+function radarSVG(vals,cmp,o){
+  o=Object.assign({size:220,fill:"rgba(28,37,52,.14)",stroke:"#1C2534",cmp:"#C9A26B",grid:"#D3D9E2",text:"#5A6577",font:11,labels:true,aria:"Profil sur les cinq critères"},o||{});
+  const S=o.size,W=o.labels?S+150:S,H=o.labels?S+24:S,cx=W/2,cy=H/2+(o.labels?2:0),R=S/2-(o.labels?12:6),n=5;
+  const pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n;const r=R*Math.max(0,Math.min(5,v||0))/5;return [cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  const poly=vs=>vs.map((v,i)=>pt(i,v==null?0:v).map(x=>x.toFixed(1)).join(",")).join(" ");
+  let g="";
+  for(let k=1;k<=5;k++)g+=`<polygon points="${poly([k,k,k,k,k])}" style="fill:none;stroke:${o.grid};stroke-width:${k===5?1.3:.8}"/>`;
+  for(let i=0;i<n;i++){const [x,y]=pt(i,5);g+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" style="stroke:${o.grid};stroke-width:.8"/>`}
+  if(cmp&&cmp.some(v=>v!=null))g+=`<polygon points="${poly(cmp)}" style="fill:none;stroke:${o.cmp};stroke-width:2;stroke-dasharray:5 4;stroke-linejoin:round"/>`;
+  if(vals&&vals.some(v=>v!=null)){g+=`<polygon points="${poly(vals)}" style="fill:${o.fill};stroke:${o.stroke};stroke-width:2.2;stroke-linejoin:round"/>`;
+    vals.forEach((v,i)=>{if(v==null)return;const [x,y]=pt(i,v);g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" style="fill:${o.stroke}"/>`})}
+  if(o.labels)RC.forEach((l,i)=>{const [x,y]=pt(i,5);const dx=x-cx,dy=y-cy;const anchor=Math.abs(dx)<4?"middle":dx<0?"end":"start";
+    const lx=x+(anchor==="middle"?0:dx<0?-8:8),ly=y+(dy<-R*.9?-10:dy>R*.5?16:4);const v=vals&&vals[i];
+    g+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" style="font-size:${o.font}px;font-weight:600;fill:${o.text};font-family:inherit">${l}${v!=null?`<tspan style="font-weight:700;fill:${o.stroke}"> ${f1(v)}</tspan>`:""}</text>`});
+  return `<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" width="${W.toFixed(0)}" height="${H.toFixed(0)}" role="img" aria-label="${esc(o.aria)}" style="max-width:100%;height:auto;display:block;margin:0 auto">${g}</svg>`;
 }
+
+/* ---------- rapport pour la direction technique ---------- */
+function plural(n,s,p){return n+" "+(n>1?(p||s+"s"):s)}
+async function buildReportHTML(opts){
+  opts=Object.assign({dest:"",auteur:prefs.sig||"",intro:"",fiches:"sel"},opts||{});
+  const R=repData();
+  const C={navy:"#1C2534",gold:"#C9A26B",goldT:"#8A6526",goldS:"#F4EBDD",ink:"#1C2534",muted:"#5A6577",line:"#D3D9E2",soft:"#EEF0F3",good:"#1E7A4F",goodS:"#D7EDE0",warn:"#9A6410",warnS:"#F5E6C8",bad:"#B03A2C",badS:"#F6DCD7",blue:"#2F5C9E",blueS:"#DCE6F4"};
+  const STC={suivre:[C.soft,C.muted],prio:[C.goldS,C.goldT],essai:[C.blueS,C.blue],signe:[C.goodS,C.good],club:[C.navy,"#F4F1EA"],ecarte:[C.badS,C.bad]};
+  const FIC={consolide:C.good,confirmer:C.warn,premiere:C.warn,aucune:C.muted};
+  const dateTxt=new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+  const title=R.team?"Bilan de l'équipe":"Rapport de détection";
+  const evs=[];R.list.forEach(x=>(BYJ[x.id]||[]).forEach(e=>evs.push(e)));
+  const dates=evs.map(e=>e.date).filter(Boolean).sort();
+  const period=dates.length?(dates[0]===dates[dates.length-1]?fmtDate(dates[0]):`du ${fmtDate(dates[0])} au ${fmtDate(dates[dates.length-1])}`):"";
+  const observers=[...new Set(evs.map(e=>nameOf(e.auteur,e.sig)))].sort();
+  const gp=avgProfile(R.evald);const selEv=R.sel.filter(x=>x.a.note!=null);const sp=selEv.length?avgProfile(selEv):null;
+  const pillS=s=>{const c=STC[s||"suivre"];return `<span class="pill" style="background:${c[0]};color:${c[1]}">${esc(ST[s||"suivre"])}</span>`};
+  const fiS=fi=>`<span class="fi" style="color:${FIC[fi]}">${esc(FI[fi])}</span>`;
+  const heat=v=>v==null?"":`background:rgba(201,162,107,${(.08+(Math.max(1,v)-1)/4*.8).toFixed(2)})`;
+  const bars=(entries,color)=>{const mx=Math.max(1,...entries.map(e=>e[1]));return entries.length?entries.map(([l,n])=>`<div class="hb"><span>${esc(l)}</span><i><b style="width:${Math.round(n/mx*100)}%;background:${color||C.navy}"></b></i><em>${n}</em></div>`).join(""):`<p class="muted">Aucune donnée.</p>`};
+  const byCat={},byPoste={};R.list.forEach(x=>{const c=cat(x.j.annee)||"Sans année";byCat[c]=(byCat[c]||0)+1;const p=x.j.poste||"À préciser";byPoste[p]=(byPoste[p]||0)+1});
+  const total=R.list.length||1;
+  const stEntries=STATUTS.map(([k,l])=>[k,l,R.list.filter(x=>(x.j.statut||"suivre")===k).length]).filter(s=>s[2]);
+  const fiCount={consolide:0,confirmer:0,premiere:0,aucune:0};R.list.forEach(x=>{fiCount[x.a.fi||"aucune"]++});
+  const q=[1,2,3,4].map(t=>R.list.filter(x=>trim(x.j.mois)===t).length);const qKnown=q.reduce((s,v)=>s+v,0);const qMax=Math.max(1,...q);
+  const nCons=R.sel.filter(x=>x.a.fi==="consolide").length;
+  /* points clés */
+  const pts=[];
+  if(!R.team)pts.push(R.sel.length?`<b>${plural(R.sel.length,"joueur")} proposé${R.sel.length>1?"s":""} au club</b>, dont ${nCons} avec un avis consolidé.`:`Aucun joueur n'est encore proposé au club.`);
+  if(gp.some(v=>v!=null)){const idx=gp.map((v,i)=>[v,i]).filter(x=>x[0]!=null);const hi=idx.reduce((a,b)=>b[0]>a[0]?b:a),lo=idx.reduce((a,b)=>b[0]<a[0]?b:a);
+    pts.push(`Point fort du groupe : <b>${esc(CRIT[hi[1]].name.toLowerCase())}</b> (${f1(hi[0])} sur 5). Point à travailler : <b>${esc(CRIT[lo[1]].name.toLowerCase())}</b> (${f1(lo[0])}).`)}
+  if(R.gems.length)pts.push(`<b>${plural(R.gems.length,"joueur")}</b> né${R.gems.length>1?"s":""} en fin d'année ou en retard de développement ${R.gems.length>1?"sont notés":"est noté"} au-dessus de la moyenne : à ne pas écarter sur le seul critère physique.`);
+  if(qKnown)pts.push(`${Math.round((q[0]+q[1])/qKnown*100)} % des joueurs observés sont nés au premier semestre${(q[0]+q[1])/qKnown>.6?" : le biais de l'âge est marqué":""}.`);
+  const toConf=R.list.filter(x=>x.a.fi==="premiere"||x.a.fi==="confirmer").length;
+  if(toConf)pts.push(`${plural(toConf,"avis")} reste${toConf>1?"nt":""} à confirmer (règle USLD : 3 évaluations, 2 éducateurs, 2 situations).`);
+  if(R.unrated.length)pts.push(`${plural(R.unrated.length,"joueur")} repéré${R.unrated.length>1?"s":""} sans évaluation pour l'instant.`);
+  /* fiches */
+  let fl=opts.fiches==="none"?[]:opts.fiches==="eval"?R.evald.slice():(R.sel.length?R.sel.slice():R.evald.slice());
+  const critRows=(a)=>CRIT.map((c,i)=>{const v=a.avg[c.id],g=gp[i];return `<div class="cr"><span>${esc(c.name)}</span><i><b style="width:${v!=null?Math.round(v/5*100):0}%"></b>${g!=null?`<u style="left:${Math.round(g/5*100)}%"></u>`:""}</i><em>${f1(v)}</em></div>`}).join("");
+  const uniq=a=>[...new Set(a.map(s=>String(s||"").trim()).filter(Boolean))];
+  const fiche=({id,j,a})=>{const ev=(BYJ[id]||[]).slice().sort((x,y)=>String(x.date).localeCompare(String(y.date)));const nObs=new Set(ev.map(e=>e.auteur||plain(e.sig||""))).size;
+    const forts=uniq(ev.map(e=>e.forts)),axes=uniq(ev.map(e=>e.axes));
+    const born=j.annee?`né en ${j.mois?MOIS[j.mois-1]+" ":""}${j.annee}`:"année à préciser";
+    return `<article class="pf">
+      <header class="pf-h"><span class="ini">${esc(ini(j))}</span><div class="pf-id"><h3>${esc(fullName(j))}${trim(j.mois)?` <span class="tq${trim(j.mois)>=3?" late":""}">T${trim(j.mois)}</span>`:""}</h3>
+        <p>${esc([cat(j.annee),born,j.club||"Sans club",j.poste||"Poste à préciser",j.pied?"pied "+j.pied.toLowerCase():""].filter(Boolean).join(" · "))}</p></div>
+        <div class="pf-note"><b>${f1(a.note)}</b><small>/5</small>${fiS(a.fi)}</div></header>
+      <div class="pf-b"><div class="pf-r">${radarSVG(CRIT.map(c=>a.avg[c.id]),gp,{size:170,font:10,aria:"Profil de "+fullName(j)})}<p class="lg"><i class="l1"></i>${esc(j.prenom||"Joueur")} <i class="l2"></i>Moyenne du groupe</p></div>
+        <div class="pf-c">${critRows(a)}
+          <dl class="pf-facts"><div><dt>Statut</dt><dd>${pillS(j.statut)}</dd></div><div><dt>Évaluations</dt><dd>${a.n} par ${plural(nObs,"éducateur")}</dd></div>
+          <div><dt>Avis</dt><dd>${a.avis.oui} fort potentiel · ${a.avis.revoir} à revoir · ${a.avis.non} pas au niveau</dd></div>${a.matu?`<div><dt>Développement</dt><dd>${esc(MATU_L[a.matu])}</dd></div>`:""}<div><dt>Repéré en</dt><dd>${esc(j.lieu||SRC[j.source]||"—")}</dd></div></dl></div></div>
+      ${forts.length||axes.length||j.notes?`<div class="pf-t">${forts.length?`<div><h4>Points forts</h4><ul>${forts.map(s=>`<li>${esc(s)}</li>`).join("")}</ul></div>`:""}${axes.length?`<div><h4>Axes de progrès</h4><ul>${axes.map(s=>`<li>${esc(s)}</li>`).join("")}</ul></div>`:""}${j.notes?`<div class="full"><h4>Observations</h4><p>${esc(j.notes)}</p></div>`:""}</div>`:""}
+      ${ev.length?`<table class="pf-ev"><thead><tr><th>Date</th><th>Éducateur</th><th>Situation</th>${CRIT.map(c=>`<th class="c" title="${esc(c.name)}">${c.k}</th>`).join("")}<th>Avis</th></tr></thead><tbody>${ev.map(e=>`<tr><td>${esc(fmtDate(e.date))}</td><td>${esc(nameOf(e.auteur,e.sig))}</td><td>${esc(e.contexte||"")}</td>${CRIT.map(c=>{const v=e.notes&&e.notes[c.id];return `<td class="c" style="${heat(v)}">${v||"—"}</td>`}).join("")}<td>${esc(AV[e.avis]||"")}</td></tr>`).join("")}</tbody></table>`:""}
+    </article>`};
+  const runHead=(sec)=>`<div class="run"><span>USL Dunkerque · ${esc(title)} · ${esc(R.label)}</span><span>${esc(sec)}</span></div>`;
+  const foot=`<div class="foot">Document interne USL Dunkerque · contient des informations sur des mineurs : ne pas diffuser en dehors du club.</div>`;
+  let n=0;const sec=t=>{n++;return `<h2><span>${n}</span>${esc(t)}</h2>`};
+  const css=`@page{size:A4;margin:11mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:#E3E7ED;color:${C.ink};font-family:Barlow,"Segoe UI",Helvetica,Arial,sans-serif;font-size:10.5pt;line-height:1.45}
+.sheet{width:210mm;max-width:100%;margin:14px auto;background:#fff;padding:12mm 13mm;box-shadow:0 3px 16px rgba(28,37,52,.16)}
+h1,h2,h3,.disp{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif}
+h2{display:flex;align-items:center;gap:10px;font-size:20pt;text-transform:uppercase;margin:0 0 4mm;letter-spacing:.01em;break-after:avoid}
+h2 span{display:inline-grid;place-items:center;width:9mm;height:9mm;border-radius:50%;background:${C.navy};color:${C.gold};font-size:13pt}
+h3{margin:0;font-size:15pt;line-height:1.1}
+h4{margin:0 0 1mm;font-size:8.5pt;letter-spacing:.1em;text-transform:uppercase;color:${C.muted}}
+p{margin:0}
+.muted{color:${C.muted}}
+.run{display:flex;justify-content:space-between;gap:10px;font-size:8pt;color:${C.muted};border-bottom:1px solid ${C.line};padding-bottom:2mm;margin-bottom:6mm;letter-spacing:.04em;text-transform:uppercase}
+.foot{margin-top:6mm;padding-top:2mm;border-top:1px solid ${C.line};font-size:7.5pt;color:${C.muted}}
+.cover{background:${C.navy};color:#F4F1EA;min-height:268mm;padding:16mm 14mm;display:flex;flex-direction:column;gap:9mm;border-bottom:6px solid ${C.gold}}
+.cover .top{display:flex;align-items:center;gap:5mm}
+.cover img{width:26mm;height:auto}
+.cover .eyebrow{font-size:9pt;letter-spacing:.2em;text-transform:uppercase;color:${C.gold};font-weight:700}
+.cover h1{font-size:46pt;line-height:.95;margin:auto 0 0;text-transform:uppercase;font-style:italic}
+.cover h1 small{display:block;font-size:22pt;font-style:normal;color:${C.gold};margin-top:3mm;letter-spacing:.02em}
+.cover dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4mm 8mm;margin:0}
+.cover dt{font-size:8pt;letter-spacing:.14em;text-transform:uppercase;color:#A9B3C4}
+.cover dd{margin:1mm 0 0;font-size:12pt;font-weight:600}
+.cover .figs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3mm;border-top:1px solid rgba(255,255,255,.18);padding-top:6mm}
+.cover .figs b{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:32pt;line-height:1;color:${C.gold}}
+.cover .figs span{font-size:9pt;color:#A9B3C4}
+.cover .conf{font-size:8pt;color:#A9B3C4}
+.intro{border-left:3px solid ${C.gold};background:${C.goldS};padding:4mm 5mm;margin-bottom:5mm;white-space:pre-line}
+.intro h4{color:${C.goldT}}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3mm;margin-bottom:5mm}
+.kpi{border:1px solid ${C.line};border-radius:3mm;padding:3mm 4mm}
+.kpi span{font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:${C.muted};font-weight:700}
+.kpi b{display:block;font-family:"Barlow Condensed",Arial,sans-serif;font-size:26pt;line-height:1.05}
+.kpi small{font-size:8pt;color:${C.muted}}
+.kpi.hl{background:${C.navy};border-color:${C.navy};color:#F4F1EA}.kpi.hl b{color:${C.gold}}.kpi.hl span,.kpi.hl small{color:#A9B3C4}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4mm;margin-bottom:4mm}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4mm;margin-bottom:4mm}
+.card{border:1px solid ${C.line};border-radius:3mm;padding:4mm;break-inside:avoid;min-width:0}
+.card h3{font-size:12pt;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3mm}
+.lg{display:flex;justify-content:center;flex-wrap:wrap;gap:2mm 5mm;font-size:8pt;color:${C.muted};margin-top:1mm;align-items:center}
+.lg i{display:inline-block;width:7mm;height:0;border-top:2.5px solid ${C.navy};margin-right:-3mm;vertical-align:middle}
+.lg i.l2{border-top:2px dashed ${C.gold}}
+.pts{margin:0;padding-left:5mm;display:flex;flex-direction:column;gap:2mm}
+.hb{display:grid;grid-template-columns:minmax(0,32mm) minmax(0,1fr) 7mm;gap:2mm;align-items:center;font-size:9pt;margin-bottom:1.6mm}
+.hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb i{display:block;height:3mm;background:${C.soft};border-radius:1.5mm;overflow:hidden}.hb i b{display:block;height:100%;border-radius:1.5mm}
+.hb em{font-style:normal;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:5mm;border-radius:2.5mm;overflow:hidden;background:${C.soft};margin-bottom:3mm}.stack i{display:block;height:100%}
+.legend{display:flex;flex-direction:column;gap:1.5mm}
+.legend div{display:flex;justify-content:space-between;align-items:center;font-size:9pt}
+.pill{display:inline-block;border-radius:99px;padding:.6mm 2.6mm;font-size:8.5pt;font-weight:700;white-space:nowrap}
+.cols{display:flex;align-items:flex-end;gap:3mm;height:30mm;padding-top:3mm}
+.cols div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:1mm;font-size:8.5pt}
+.cols b{display:block;width:100%;background:${C.navy};border-radius:1mm 1mm 0 0}.cols div.late b{background:${C.gold}}
+.cols span{color:${C.muted};font-weight:700}
+.fi{font-weight:700;font-size:8.5pt}
+.picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4mm}
+.pick{border:1px solid ${C.line};border-radius:3mm;padding:4mm;break-inside:avoid;display:flex;flex-direction:column;gap:2mm}
+.pick .ph{display:flex;gap:3mm;align-items:center}
+.pick .ph div{flex:1;min-width:0}
+.pick .ph p,.pf-id p{font-size:8.5pt;color:${C.muted}}
+.pick .nt,.pf-note{text-align:right;font-family:"Barlow Condensed",Arial,sans-serif;line-height:1}
+.pick .nt b,.pf-note b{font-size:24pt}.pick .nt small,.pf-note small{font-size:11pt;color:${C.muted}}
+.pf-note .fi{display:block;font-family:Barlow,Arial,sans-serif;margin-top:1mm}
+.pick q{font-size:9pt;font-style:italic;color:${C.muted};quotes:"« " " »"}
+.ini{width:11mm;height:11mm;border-radius:50%;background:${C.navy};color:${C.gold};display:grid;place-items:center;font-family:"Barlow Condensed",Arial,sans-serif;font-weight:700;font-size:12pt;flex:none}
+.tq{display:inline-block;font-family:Barlow,Arial,sans-serif;font-size:7.5pt;font-weight:700;border:1px solid ${C.line};color:${C.muted};border-radius:1mm;padding:0 1.4mm;vertical-align:middle}
+.tq.late{background:${C.blueS};color:${C.blue};border-color:${C.blueS}}
+.chips{display:flex;flex-wrap:wrap;gap:2mm}
+.chip{border:1px solid ${C.line};border-radius:99px;padding:1mm 3mm;font-size:9pt}
+.chip b{color:${C.goldT}}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid ${C.line};padding:1.6mm 1.8mm;text-align:left;font-size:8.8pt;vertical-align:middle}
+th{font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:${C.muted};background:${C.soft};border-bottom:1px solid ${C.line}}
+td.c,th.c{text-align:center}
+td.n{font-family:"Barlow Condensed",Arial,sans-serif;font-weight:700;font-size:13pt}
+tr{break-inside:avoid}
+.rk{font-family:"Barlow Condensed",Arial,sans-serif;font-weight:700;font-size:12pt;color:${C.muted}}
+.pf{border:1px solid ${C.line};border-radius:3mm;padding:4mm 5mm;margin-bottom:5mm;break-inside:avoid}
+.pf-h{display:flex;gap:3mm;align-items:center;border-bottom:1px solid ${C.line};padding-bottom:3mm;margin-bottom:3mm}
+.pf-id{flex:1;min-width:0}
+.pf-b{display:grid;grid-template-columns:72mm minmax(0,1fr);gap:5mm;align-items:center}
+.cr{display:grid;grid-template-columns:36mm minmax(0,1fr) 9mm;gap:2mm;align-items:center;font-size:9pt;margin-bottom:1.8mm}
+.cr i{position:relative;display:block;height:3.2mm;background:${C.soft};border-radius:1.6mm}
+.cr i b{display:block;height:100%;background:${C.navy};border-radius:1.6mm}
+.cr i u{position:absolute;top:-1mm;bottom:-1mm;width:0;border-left:2px solid ${C.gold}}
+.cr em{font-style:normal;font-weight:700;text-align:right}
+.pf-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2mm 4mm;margin:3mm 0 0;font-size:8.8pt}
+.pf-facts dt{font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:${C.muted};font-weight:700}
+.pf-facts dd{margin:.5mm 0 0}
+.pf-t{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3mm 5mm;margin:3mm 0;font-size:9pt}
+.pf-t .full{grid-column:1/-1}
+.pf-t ul{margin:0;padding-left:4.5mm}
+.pf-ev{margin-top:2mm}
+.meth{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4mm}
+.meth p,.meth li{font-size:9pt}
+.meth ul{margin:1mm 0 0;padding-left:4.5mm}
+.btnbar{position:sticky;top:0;z-index:2;display:flex;justify-content:center;gap:8px;padding:10px;background:${C.navy}}
+.btnbar button{font:inherit;font-weight:700;border:0;border-radius:6px;padding:9px 16px;background:${C.gold};color:${C.navy};cursor:pointer}
+.html2pdf__container .sheet{width:auto;max-width:none;margin:0;padding:0;box-shadow:none}
+.html2pdf__container .cover{min-height:268mm}
+.html2pdf__container .btnbar{display:none}
+@media print{body{background:#fff}.sheet{width:auto;margin:0;padding:0;box-shadow:none;break-after:page}.sheet:last-child{break-after:auto}.noprint{display:none!important}.cover{min-height:274mm}}
+@media screen and (max-width:760px){.sheet{margin:0 0 8px;padding:18px 14px;width:100%}.cover{min-height:auto}.g2,.g3,.picks,.meth,.pf-b,.pf-t,.kpis,.cover .figs{grid-template-columns:minmax(0,1fr)}.cover h1{font-size:34pt}.tablebox{overflow-x:auto}table{min-width:560px}}`;
+  const stats=`<div class="kpis"><div class="kpi"><span>Joueurs observés</span><b>${R.list.length}</b><small>${R.evald.length} évalué${R.evald.length>1?"s":""}</small></div>
+    <div class="kpi"><span>Évaluations</span><b>${R.nEv}</b><small>${plural(observers.length,"éducateur")}</small></div>
+    ${R.team?`<div class="kpi hl"><span>Fort potentiel</span><b>${R.strong.length}</b><small>avis majoritaire</small></div>`:`<div class="kpi hl"><span>Sélection proposée</span><b>${R.sel.length}</b><small>${nCons} avis consolidé${nCons>1?"s":""}</small></div>`}
+    <div class="kpi"><span>Note moyenne</span><b>${R.avgNote!=null?f1(R.avgNote):"—"}</b><small>sur 5</small></div></div>`;
+  const html=`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)} USLD – ${esc(R.label)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>${css}</style></head><body>
+<div class="btnbar noprint"><button type="button" onclick="exportPDF().catch(function(){alert('PDF impossible sans connexion : utilise Imprimer puis Enregistrer en PDF.')})">Télécharger en PDF</button><button type="button" onclick="window.print()">Imprimer</button></div>
+<div id="doc">
+
+<section class="sheet" style="padding:0"><div class="cover">
+  <div class="top"><img src="${CREST}" alt="Écusson USL Dunkerque"><div><div class="eyebrow">USL Dunkerque · École de football</div><div class="disp" style="font-size:15pt;font-weight:700;text-transform:uppercase">Cellule détection</div></div></div>
+  <h1>${esc(title)}<small>${esc(R.label)}</small></h1>
+  <dl>${opts.dest?`<div><dt>À l'attention de</dt><dd>${esc(opts.dest)}</dd></div>`:""}${opts.auteur?`<div><dt>Établi par</dt><dd>${esc(opts.auteur)}</dd></div>`:""}
+    <div><dt>Date</dt><dd>${esc(dateTxt)}</dd></div>${period?`<div><dt>Période d'observation</dt><dd>${esc(period)}</dd></div>`:""}
+    ${observers.length?`<div style="grid-column:1/-1"><dt>Éducateurs observateurs</dt><dd>${esc(observers.join(", "))}</dd></div>`:""}</dl>
+  <div class="figs"><div><b>${R.list.length}</b><span>joueurs observés</span></div><div><b>${R.nEv}</b><span>évaluations</span></div><div><b>${R.team?R.strong.length:R.sel.length}</b><span>${R.team?"à fort potentiel":"proposés au club"}</span></div><div><b>${R.avgNote!=null?f1(R.avgNote):"—"}</b><span>note moyenne sur 5</span></div></div>
+  <p class="conf">Document interne · contient des informations sur des mineurs : ne pas diffuser en dehors du club.</p>
+</div></section>
+
+<section class="sheet">${runHead("Synthèse")}
+  ${sec("Synthèse")}
+  ${opts.intro?`<div class="intro"><h4>Le mot de l'éducateur</h4>${esc(opts.intro)}</div>`:""}
+  ${stats}
+  <div class="g2">
+    <div class="card"><h3>Profil moyen ${R.team?"de l'équipe":"du groupe"}</h3>${gp.some(v=>v!=null)?radarSVG(gp,sp,{size:180,stroke:C.navy,fill:"rgba(28,37,52,.14)",aria:"Profil moyen du groupe"})+`<p class="lg"><i class="l1"></i>Joueurs évalués${sp?` <i class="l2"></i>Sélection proposée`:""}</p>`:`<p class="muted">Aucune évaluation pour l'instant.</p>`}</div>
+    <div class="card"><h3>Points clés</h3><ul class="pts">${pts.map(p=>`<li>${p}</li>`).join("")}</ul></div>
+  </div>
+  <div class="g3">
+    <div class="card"><h3>Statut des joueurs</h3><div class="stack">${stEntries.map(s=>`<i style="width:${s[2]/total*100}%;background:${STC[s[0]][s[0]==="club"?0:1]}"></i>`).join("")}</div>
+      <div class="legend">${stEntries.map(s=>`<div>${pillS(s[0])}<b>${s[2]}</b></div>`).join("")}</div></div>
+    <div class="card"><h3>Fiabilité des avis</h3>${bars([["Avis consolidé",fiCount.consolide],["À confirmer",fiCount.confirmer],["Première impression",fiCount.premiere],["Pas encore évalué",fiCount.aucune]],C.goldT)}
+      <p class="muted" style="font-size:8pt;margin-top:2mm">Consolidé : au moins 3 évaluations, 2 éducateurs, 2 situations.</p></div>
+    <div class="card"><h3>Trimestre de naissance</h3><div class="cols">${q.map((v,i)=>`<div class="${i>=2?"late":""}"><em style="font-style:normal;font-weight:700">${v}</em><b style="height:${Math.round(v/qMax*100)}%"></b><span>T${i+1}</span></div>`).join("")}</div>
+      <p class="muted" style="font-size:8pt;margin-top:2mm">${qKnown?`${qKnown} mois de naissance connus sur ${R.list.length}.`:"Mois de naissance non renseignés."} En or : nés en fin d'année.</p></div>
+  </div>
+  ${foot}
+</section>
+
+${!R.team?`<section class="sheet">${runHead("Sélection proposée")}
+  ${sec("Sélection proposée au club")}
+  <p class="muted" style="margin-bottom:4mm">Joueurs passés en « Prioritaire », « Invité à l'essai » ou « Signé au club ». Le tracé en pointillés or indique la moyenne du groupe.</p>
+  ${R.sel.length?`<div class="picks">${R.sel.map(({id,j,a})=>`<div class="pick"><div class="ph"><span class="ini">${esc(ini(j))}</span><div><h3 style="font-size:13pt">${esc(fullName(j))}${trim(j.mois)?` <span class="tq${trim(j.mois)>=3?" late":""}">T${trim(j.mois)}</span>`:""}</h3><p>${esc([cat(j.annee),j.poste||"Poste à préciser",j.club||"Sans club"].filter(Boolean).join(" · "))}</p></div><div class="nt"><b>${f1(a.note)}</b><small>/5</small></div></div>
+    ${a.note!=null?radarSVG(CRIT.map(c=>a.avg[c.id]),gp,{size:130,font:9,aria:"Profil de "+fullName(j)}):""}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:2mm">${pillS(j.statut)}${fiS(a.fi)}</div>${bestQuote(id)?`<q>${esc(bestQuote(id))}</q>`:""}</div>`).join("")}</div>`:`<p class="muted">Aucun joueur en sélection pour l'instant.</p>`}
+  ${R.gems.length?`<div class="card" style="margin-top:5mm"><h3>À ne pas rater</h3><p class="muted" style="font-size:9pt;margin-bottom:3mm">Nés en fin d'année (T3-T4) ou jugés en retard de développement, et pourtant notés au-dessus de la moyenne du groupe (${f1(R.avgNote)} sur 5).</p>
+    <div class="chips">${R.gems.map(({j,a})=>`<span class="chip">${esc(fullName(j))} <b>${f1(a.note)}${trim(j.mois)?" · T"+trim(j.mois):""}</b></span>`).join("")}</div></div>`:""}
+  ${foot}
+</section>`:""}
+
+<section class="sheet">${runHead("Classement")}
+  ${sec("Classement des joueurs évalués")}
+  <p class="muted" style="margin-bottom:4mm">Note sur 5 : moyenne des cinq critères, toutes évaluations confondues. Plus la case est dorée, plus la note est haute. T technique · J jeu · A athlétique · M mental · P potentiel.</p>
+  ${R.evald.length?`<div class="tablebox"><table><thead><tr><th class="c">#</th><th>Joueur</th><th>Cat.</th><th class="c">Né</th><th>Poste</th>${CRIT.map(c=>`<th class="c" title="${esc(c.name)}">${c.k}</th>`).join("")}<th class="c">Note</th><th>Fiabilité</th><th>Statut</th></tr></thead><tbody>
+  ${R.evald.map(({j,a},i)=>`<tr><td class="c rk">${i+1}</td><td><b>${esc(fullName(j))}</b></td><td>${esc(cat(j.annee)||"—")}</td><td class="c">${trim(j.mois)?"T"+trim(j.mois):"—"}</td><td>${esc(j.poste||"—")}</td>${CRIT.map(c=>`<td class="c" style="${heat(a.avg[c.id])}">${f1(a.avg[c.id])}</td>`).join("")}<td class="c n">${f1(a.note)}</td><td>${fiS(a.fi)}</td><td>${pillS(j.statut)}</td></tr>`).join("")}
+  </tbody></table></div>`:`<p class="muted">Aucun joueur évalué pour l'instant.</p>`}
+  <div class="g2" style="margin-top:5mm"><div class="card"><h3>Par catégorie</h3>${bars(Object.entries(byCat).sort((a,b)=>(parseInt(a[0].slice(1))||99)-(parseInt(b[0].slice(1))||99)))}</div>
+    <div class="card"><h3>Par poste</h3>${bars(Object.entries(byPoste).sort((a,b)=>b[1]-a[1]))}</div></div>
+  ${R.unrated.length?`<div class="card" style="margin-top:5mm"><h3>Pas encore évalués</h3><div class="chips">${R.unrated.map(({j})=>`<span class="chip">${esc(fullName(j))}${cat(j.annee)?` <b>${esc(cat(j.annee))}</b>`:""}</span>`).join("")}</div></div>`:""}
+  ${foot}
+</section>
+
+${fl.length?`<section class="sheet">${runHead("Fiches individuelles")}
+  ${sec("Fiches individuelles")}
+  <p class="muted" style="margin-bottom:4mm">Barre bleu marine : note du joueur. Trait or : moyenne du groupe.</p>
+  ${fl.map(fiche).join("")}
+  ${foot}
+</section>`:""}
+
+<section class="sheet">${runHead("Annexe")}
+  ${sec("Méthode et grille d'évaluation")}
+  <div class="meth">
+    <div class="card"><h3>Les cinq critères</h3><ul>${CRIT.map(c=>`<li><b>${esc(c.name)}</b> : ${esc(c.hint.toLowerCase())}.</li>`).join("")}</ul>
+      <p style="margin-top:2mm">Chaque critère est noté de 1 à 5 : ${NIV.map((l,i)=>`${i+1} ${l.toLowerCase()}`).join(", ")}.</p></div>
+    <div class="card"><h3>Fiabilité d'un avis</h3><p>Un joueur n'est jugé que sur plusieurs observations, comme dans les détections de la FFF.</p>
+      <ul><li><b>Première impression</b> : une seule évaluation.</li><li><b>À confirmer</b> : plusieurs évaluations, mais pas encore assez variées.</li><li><b>Avis consolidé</b> : au moins 3 évaluations, par 2 éducateurs différents, dans 2 situations différentes.</li></ul></div>
+    <div class="card"><h3>Biais de l'âge</h3><p>Les enfants nés en début d'année sont surreprésentés dans les détections. Le trimestre de naissance (T1 à T4) et le développement physique sont notés pour ne pas écarter un joueur plus jeune ou plus tardif que les autres.</p></div>
+    <div class="card"><h3>Statuts</h3><ul>${STATUTS.map(([k,l])=>`<li>${pillS(k)}</li>`).join("")}</ul></div>
+  </div>
+  ${foot}
+</section>
+</div>
+<script>
+window.exportPDF=async function(asBlob){
+  var srcs=["https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js","https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"];
+  for(var i=0;!window.html2pdf&&i<srcs.length;i++){try{await new Promise(function(ok,ko){var t=document.createElement("script");t.src=srcs[i];t.onload=ok;t.onerror=ko;document.head.appendChild(t)})}catch(e){}}
+  if(!window.html2pdf)throw new Error("html2pdf");
+  try{await document.fonts.ready}catch(e){}
+  var opt={margin:[10,10,10,10],filename:document.title+".pdf",image:{type:"jpeg",quality:.94},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff",logging:false},jsPDF:{unit:"mm",format:"a4",orientation:"portrait",compress:true},pagebreak:{mode:["css","legacy"],avoid:[".pf",".card",".pick","tr",".kpis",".intro","h2",".g2",".g3"]}};
+  var els=[].slice.call(document.querySelectorAll("#doc > .sheet"));
+  var w=html2pdf().set(opt).from(els[0]).toPdf();
+  els.slice(1).forEach(function(el){w=w.get("pdf").then(function(pdf){pdf.addPage()}).from(el).toContainer().toCanvas().toPdf()});
+  if(asBlob)return await w.outputPdf("blob");
+  await w.save();
+};
+<\/script>
+</body></html>`;
+  return html;
+}
+
+/* ---------- fenêtre de création du rapport ---------- */
+function openReportDialog(){
+  const R=repData();if(!R.list.length){toast("Aucun joueur dans ce groupe.");return}
+  const fiches=prefs.rfiches||"sel";
+  $("#modalBox").innerHTML=`<div class="modal-ov" id="mov"><form class="dialog" id="repForm" role="dialog" aria-modal="true" aria-labelledby="rp-t" novalidate>
+    <h3 id="rp-t">Rapport pour la direction technique</h3>
+    <p class="hint">Groupe : <b>${esc(R.label)}</b> · ${plural(R.list.length,"joueur")}. Pour un autre groupe, change-le dans l'onglet Rapport. Les téléphones des familles ne figurent jamais dans le rapport.</p>
+    <div class="grid2">
+      <label class="field"><span>À l'attention de</span><input type="text" id="rp-dest" value="${esc(prefs.rdest||"Responsable technique adjoint")}"></label>
+      <label class="field"><span>Établi par</span><input type="text" id="rp-auteur" value="${esc(prefs.sig||"")}" placeholder="Ton prénom et nom" autocomplete="name"></label>
+      <label class="field full"><span>Fiches individuelles</span><select id="rp-fiches">
+        <option value="sel"${fiches==="sel"?" selected":""}>Joueurs de la sélection proposée</option>
+        <option value="eval"${fiches==="eval"?" selected":""}>Tous les joueurs évalués</option>
+        <option value="none"${fiches==="none"?" selected":""}>Aucune, synthèse seulement</option></select></label>
+      <label class="field full"><span>Mot d'introduction (facultatif)</span><textarea id="rp-intro" placeholder="ex. Voici les joueurs que nous proposons d'inviter à l'essai après le stage de la Toussaint.">${esc(prefs.rintro||"")}</textarea></label>
+    </div>
+    <div class="actions"><button type="button" class="btn ghost" data-a="add-cancel">Annuler</button><button type="submit" class="btn primary">Créer le rapport</button></div>
+  </form></div>`;
+  setTimeout(()=>$("#rp-dest").focus(),30);
+}
+let REP=null;
+async function makeReport(){
+  const opts={dest:$("#rp-dest").value.trim(),auteur:$("#rp-auteur").value.trim(),fiches:$("#rp-fiches").value,intro:$("#rp-intro").value.trim()};
+  prefs.rdest=opts.dest;prefs.rfiches=opts.fiches;prefs.rintro=opts.intro;if(opts.auteur&&!prefs.sig){prefs.sig=opts.auteur;S.me=meId()}savePrefs();
+  const R=repData();const html=await buildReportHTML(opts);
+  const slug=plain(R.label||"joueurs").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"joueurs";
+  REP={html,name:`${R.team?"bilan":"rapport-detection"}-usld-${slug}-${today()}.html`};
+  let canShare=false;try{canShare=!!(navigator.canShare&&navigator.canShare({files:[new File(["x"],"t.pdf",{type:"application/pdf"})]}))}catch(e){}
+  $("#modalBox").innerHTML=`<div class="rp-ov" role="dialog" aria-modal="true" aria-label="Aperçu du rapport"><div class="rp-bar"><b>Aperçu du rapport</b>
+    <span class="rp-st" id="rp-st" aria-live="polite">Préparation du PDF…</span>
+    <button type="button" class="btn gold small" data-a="rp-pdf" id="rp-pdf">Télécharger le PDF</button>
+    ${canShare?`<button type="button" class="btn small" data-a="rp-share">Envoyer</button>`:""}
+    <button type="button" class="btn small" data-a="rp-print">Imprimer</button>
+    <button type="button" class="btn small" data-a="add-cancel">Fermer</button></div>
+    <iframe id="rp-frame" title="Rapport"></iframe></div>`;
+  const fr=$("#rp-frame");
+  fr.addEventListener("load",()=>{prepPDF()},{once:true});
+  fr.srcdoc=html;
+}
+async function prepPDF(){
+  const rep=REP;if(!rep||rep.pdfP)return;
+  const st=()=>$("#rp-st");
+  rep.pdfP=(async()=>{const w=$("#rp-frame").contentWindow;return await w.exportPDF(true)})();
+  try{rep.pdf=await rep.pdfP;if(REP===rep&&st())st().textContent="PDF prêt"}
+  catch(e){rep.pdfErr=true;if(REP===rep&&st())st().textContent="PDF indisponible hors connexion : utilise Imprimer"}
+}
+function pdfName(){return REP.name.replace(/\.html$/,".pdf")}
+async function pdfReport(){
+  if(!REP)return;const btn=$("#rp-pdf");if(btn){btn.disabled=true;btn.textContent="Création du PDF…"}
+  try{if(!REP.pdfP)prepPDF();const blob=REP.pdf||await REP.pdfP;await DL.save({filename:pdfName(),data:blob});toast("PDF téléchargé")}
+  catch(e){toast("PDF impossible ici. Utilise « Imprimer » puis « Enregistrer en PDF ».")}
+  finally{if(btn){btn.disabled=false;btn.textContent="Télécharger le PDF"}}
+}
+function printReport(){
+  try{const w=$("#rp-frame").contentWindow;w.focus();w.print()}
+  catch(e){toast("Impression impossible ici : télécharge le rapport puis imprime-le.")}
+}
+async function shareReport(){
+  if(!REP)return;
+  if(!REP.pdf){toast(REP.pdfErr?"PDF indisponible hors connexion.":"Le PDF est en préparation, réessaie dans un instant.");return}
+  try{await navigator.share({files:[new File([REP.pdf],pdfName(),{type:"application/pdf"})],title:"Rapport de détection USLD"})}
+  catch(e){if(e&&e.name==="AbortError")return;toast("Envoi impossible : utilise « Télécharger le PDF ».")}
+}
+async function downloadReport(){if(!REP)return;try{await DL.save({filename:REP.name,data:REP.html});toast("Rapport téléchargé")}catch(e){toast("Téléchargement impossible ici.")}}
+
 async function exportFile(kind){
   if(!DL){toast("Le téléchargement n'est pas disponible ici.");return}
   const R=repData();const slug=plain(R.label||"joueurs").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"stage";
@@ -1148,8 +1479,13 @@ document.addEventListener("click",ev=>{
   else if(a==="bk-share")backup(true);
   else if(a==="bk-wipe"){if(ui.armed!=="wipe"){ui.armed="wipe";clearTimeout(arm.t);arm.t=setTimeout(()=>{ui.armed=null;if(ui.view==="donnees")renderData()},4000);renderData()}else{ui.armed=null;db.wipe();toast("Toutes les données ont été effacées");renderData()}}
   else if(a==="exp-html")exportFile("html");
+  else if(a==="rep-open")openReportDialog();
+  else if(a==="rp-print")printReport();
+  else if(a==="rp-share")shareReport();
+  else if(a==="rp-dl")downloadReport();
+  else if(a==="rp-pdf")pdfReport();
 });
-document.addEventListener("submit",ev=>{if(ev.target.id==="impForm"){ev.preventDefault();runImport();return}if(ev.target.id==="addForm"){ev.preventDefault();const m=ev.submitter&&ev.submitter.dataset.mode;submitAdd(m||"add")}});
+document.addEventListener("submit",ev=>{if(ev.target.id==="repForm"){ev.preventDefault();makeReport();return}if(ev.target.id==="impForm"){ev.preventDefault();runImport();return}if(ev.target.id==="addForm"){ev.preventDefault();const m=ev.submitter&&ev.submitter.dataset.mode;submitAdd(m||"add")}});
 document.addEventListener("input",ev=>{
   const el=ev.target;
   if(el.id==="q"){ui.q=el.value;renderList();return}
